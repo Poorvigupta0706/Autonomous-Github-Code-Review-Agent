@@ -4,5 +4,5 @@ def test_function():
 def another_test():
     return "testing review"
 
-def third_test():
-    return "this should be reviewed"
+def third_function():
+    return "false"
