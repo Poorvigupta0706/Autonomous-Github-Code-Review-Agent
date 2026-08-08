@@ -6,3 +6,5 @@ def another_test():
 
 def third_function():
     return "false"
+def webhook_test():
+    return "webhook is working"
