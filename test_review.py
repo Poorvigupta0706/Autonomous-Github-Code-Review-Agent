@@ -1,4 +1,8 @@
 def test_function():
     return "hello"
-def another_function():
-    return"testing review"
+
+def another_test():
+    return "testing review"
+
+def third_test():
+    return "this should be reviewed"
