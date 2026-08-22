@@ -1,22 +1,31 @@
+from typing import Any
+
 from github import Github
+from github.PullRequest import PullRequest
 
 
 def get_pr_files(
-    installation_token,
-    repo_name,
-    pr_number
-):
+    installation_token: str,
+    repo_name: str,
+    pr_number: int,
+) -> list[dict[str, Any]] | None:
     """
-    Retrieve all changed files from a Pull Request.
+    Retrieve all files changed in a GitHub Pull Request.
 
     Args:
-        installation_token: GitHub App installation access token.
-        repo_name: Repository name in the format 'owner/repository'.
-        pr_number: Pull Request number.
+        installation_token:
+            GitHub App installation access token.
+
+        repo_name:
+            Repository in the format:
+            owner/repository
+
+        pr_number:
+            Pull Request number.
 
     Returns:
-        List of dictionaries containing file information,
-        or None if retrieval fails.
+        A list containing information about each changed file.
+        Returns None if the GitHub request fails.
     """
 
     print()
@@ -28,20 +37,23 @@ def get_pr_files(
 
     try:
         repo = github.get_repo(repo_name)
-        pr = repo.get_pull(pr_number)
-        files = pr.get_files()
 
-        changes = []
+        pr: PullRequest = repo.get_pull(pr_number)
 
-        for file in files:
-            changes.append({
+        changes: list[dict[str, Any]] = []
+
+        for file in pr.get_files():
+
+            change = {
                 "filename": file.filename,
                 "status": file.status,
                 "additions": file.additions,
                 "deletions": file.deletions,
                 "changes": file.changes,
-                "patch": file.patch,
-            })
+                "patch": file.patch or "",
+            }
+
+            changes.append(change)
 
             print(
                 f"File: {file.filename} | "
@@ -51,37 +63,111 @@ def get_pr_files(
             )
 
         print()
-        print("Total changed files:", len(changes))
-        print("Changed files retrieved successfully")
+        print(
+            "Total changed files:",
+            len(changes),
+        )
+
+        print(
+            "Changed files retrieved successfully"
+        )
 
         return changes
 
     except Exception as e:
-        print("Failed to retrieve changed files")
-        print("Error:", e)
+
+        print(
+            "Failed to retrieve changed files"
+        )
+
+        print(
+            "Error:",
+            e,
+        )
+
         return None
 
     finally:
         github.close()
 
 
-def add_comment(
-    installation_token,
-    repo_name,
-    pr_number,
-    review
-):
+def get_file_content(
+    installation_token: str,
+    repo_name: str,
+    file_path: str,
+    ref: str | None = None,
+) -> dict[str, Any]:
     """
-    Add a general comment to a Pull Request.
+    Retrieve the contents of a repository file.
 
     Args:
-        installation_token: GitHub App installation access token.
-        repo_name: Repository name in the format 'owner/repository'.
-        pr_number: Pull Request number.
-        review: Review text to post.
+        installation_token:
+            GitHub App installation access token.
+
+        repo_name:
+            Repository in owner/repository format.
+
+        file_path:
+            Path of the file inside the repository.
+
+        ref:
+            Git branch, tag, or commit SHA.
+            If omitted, GitHub uses the default branch.
 
     Returns:
-        True if successful, otherwise False.
+        Dictionary containing file path and content.
+    """
+
+    github = Github(installation_token)
+
+    try:
+
+        repo = github.get_repo(repo_name)
+
+        file = repo.get_contents(
+            file_path,
+            ref=ref,
+        )
+
+        if isinstance(file, list):
+            return {
+                "success": False,
+                "error": "Path points to a directory",
+            }
+
+        content = file.decoded_content.decode(
+            "utf-8",
+            errors="ignore",
+        )
+
+        return {
+            "success": True,
+            "file": file_path,
+            "content": content,
+        }
+
+    except Exception as e:
+
+        return {
+            "success": False,
+            "error": str(e),
+        }
+
+    finally:
+        github.close()
+
+
+def add_comment(
+    installation_token: str,
+    repo_name: str,
+    pr_number: int,
+    review: str,
+) -> bool:
+    """
+    Post the AI-generated review as a general
+    Pull Request comment.
+
+    This is NOT an inline review comment yet.
     """
 
     print()
@@ -89,21 +175,41 @@ def add_comment(
     print("POSTING AI REVIEW")
     print("========================================")
 
+    if not review.strip():
+
+        print("Review is empty.")
+
+        return False
+
     github = Github(installation_token)
 
     try:
+
         repo = github.get_repo(repo_name)
+
         pr = repo.get_pull(pr_number)
 
-        pr.create_issue_comment(review)
+        pr.create_issue_comment(
+            review
+        )
 
-        print("AI review comment posted successfully")
+        print(
+            "AI review comment posted successfully"
+        )
 
         return True
 
     except Exception as e:
-        print("Failed to post AI review")
-        print("Error:", e)
+
+        print(
+            "Failed to post AI review"
+        )
+
+        print(
+            "Error:",
+            e,
+        )
+
         return False
 
     finally:

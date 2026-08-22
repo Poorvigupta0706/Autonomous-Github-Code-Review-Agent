@@ -1,4 +1,3 @@
-
 from mcp.server.fastmcp import FastMCP
 
 from github_client import (
@@ -28,29 +27,18 @@ def get_pull_request_diff(
 ) -> list:
     """
     Retrieve all files changed in a Pull Request.
-
-    Args:
-        installation_token:
-            GitHub App installation access token.
-
-        repo_name:
-            Repository name in the format:
-            owner/repository
-
-        pr_number:
-            Pull Request number.
     """
 
     if not installation_token:
-        return [
-            {
-                "error":
-                    "installation_token is required"
-            }
-        ]
+        return [{"error": "installation_token is required"}]
+
+    if not repo_name:
+        return [{"error": "repo_name is required"}]
+
+    if not pr_number:
+        return [{"error": "pr_number is required"}]
 
     try:
-
         changes = get_pr_files(
             installation_token=installation_token,
             repo_name=repo_name,
@@ -60,20 +48,14 @@ def get_pull_request_diff(
         if changes is None:
             return [
                 {
-                    "error":
-                        "Failed to retrieve Pull Request files"
+                    "error": "Failed to retrieve Pull Request files"
                 }
             ]
 
         return changes
 
     except Exception as e:
-
-        return [
-            {
-                "error": str(e)
-            }
-        ]
+        return [{"error": str(e)}]
 
 
 # ============================================================
@@ -86,20 +68,17 @@ def search_code(
     top_k: int = 5,
 ) -> list:
     """
-    Search the indexed repository using
-    semantic RAG retrieval.
+    Search the indexed repository using semantic RAG retrieval.
     """
 
-    if not query.strip():
+    if not query or not query.strip():
         return [
             {
-                "error":
-                    "Search query is required"
+                "error": "Search query is required"
             }
         ]
 
     try:
-
         results = search_repository(
             query=query,
             top_k=top_k,
@@ -108,7 +87,6 @@ def search_code(
         return results
 
     except Exception as e:
-
         return [
             {
                 "error": str(e)
@@ -131,64 +109,49 @@ def get_file(
     """
 
     if not installation_token:
-
         return {
-            "error":
-                "installation_token is required"
+            "error": "installation_token is required"
         }
 
     if not repo_name:
-
         return {
-            "error":
-                "repo_name is required"
+            "error": "repo_name is required"
         }
 
     if not file_path:
-
         return {
-            "error":
-                "file_path is required"
+            "error": "file_path is required"
         }
 
     try:
-
         from github import Github
 
-        github = Github(
-            installation_token
-        )
+        github = Github(installation_token)
 
-        repo = github.get_repo(
-            repo_name
-        )
+        try:
+            repo = github.get_repo(repo_name)
 
-        file = repo.get_contents(
-            file_path
-        )
+            file = repo.get_contents(file_path)
 
-        if isinstance(file, list):
+            if isinstance(file, list):
+                return {
+                    "error": "Path points to a directory"
+                }
+
+            content = file.decoded_content.decode(
+                "utf-8",
+                errors="ignore",
+            )
 
             return {
-                "error":
-                    "Path points to a directory"
+                "file": file_path,
+                "content": content,
             }
 
-        content = (
-            file.decoded_content
-            .decode(
-                "utf-8",
-                errors="ignore"
-            )
-        )
-
-        return {
-            "file": file_path,
-            "content": content,
-        }
+        finally:
+            github.close()
 
     except Exception as e:
-
         return {
             "error": str(e)
         }
@@ -211,23 +174,30 @@ def post_review_comment(
     """
 
     if not installation_token:
-
         return {
             "success": False,
-            "error":
-                "installation_token is required"
+            "error": "installation_token is required"
         }
 
-    if not review.strip():
-
+    if not repo_name:
         return {
             "success": False,
-            "error":
-                "Review text is required"
+            "error": "repo_name is required"
+        }
+
+    if not pr_number:
+        return {
+            "success": False,
+            "error": "pr_number is required"
+        }
+
+    if not review or not review.strip():
+        return {
+            "success": False,
+            "error": "Review text is required"
         }
 
     try:
-
         success = add_comment(
             installation_token=installation_token,
             repo_name=repo_name,
@@ -240,7 +210,6 @@ def post_review_comment(
         }
 
     except Exception as e:
-
         return {
             "success": False,
             "error": str(e)
@@ -248,29 +217,16 @@ def post_review_comment(
 
 
 # ============================================================
-# START MCP SERVER
+# START SERVER
 # ============================================================
 
 if __name__ == "__main__":
 
-    print(
-        "========================================"
-    )
-
-    print(
-        "GITHUB CODE REVIEW MCP SERVER"
-    )
-
-    print(
-        "========================================"
-    )
-
-    print(
-        "Starting MCP server..."
-    )
+    print("========================================")
+    print("GITHUB CODE REVIEW MCP SERVER")
+    print("========================================")
+    print("Starting MCP server...")
 
     mcp.run(
-        transport="streamable-http",
-        host="0.0.0.0",
-        port=5000,
+        transport="streamable-http"
     )
